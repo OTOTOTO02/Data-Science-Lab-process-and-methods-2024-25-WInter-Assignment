@@ -9,8 +9,8 @@ def split_gender(X_train_val_df:pd.DataFrame):
     X_train_male_df = X_train_val_df2[X_train_val_df2['gender'] > 0]
     X_train_female_df = X_train_val_df2[X_train_val_df2['gender'] < 0]
 
-    X_train_male_df.drop(columns=['gender'], axis=1, inplace=True)
-    X_train_female_df.drop(columns=['gender'], axis=1, inplace=True)
+    X_train_male_df = X_train_male_df.drop(columns=['gender'], axis=1)
+    X_train_female_df = X_train_female_df.drop(columns=['gender'], axis=1)
 
     return X_train_male_df, X_train_female_df
 
@@ -40,15 +40,15 @@ class TripleForestWithGenderDivision(BaseEstimator, RegressorMixin):
         self.female_model = RandomForestRegressor(**self.female_params)
     
     def fit(self, X:pd.DataFrame, y:pd.DataFrame):
-        self.full_model.fit(X, y)
+        self.full_model.fit(X, y.values.reshape((-1,)))
         
         # Split data by gender
         X_train_male, X_train_female = split_gender(X)
         ages_male, ages_female = split_ages(X, y)
 
         # Fit gender-specific models
-        self.male_model.fit(X_train_male, ages_male)
-        self.female_model.fit(X_train_female, ages_female)
+        self.male_model.fit(X_train_male, ages_male.values.reshape((-1,)))
+        self.female_model.fit(X_train_female, ages_female.values.reshape((-1)))
 
         return self
 
@@ -64,6 +64,6 @@ class TripleForestWithGenderDivision(BaseEstimator, RegressorMixin):
             self.female_model.predict(X_female), 
             X_male.index, 
             X_female.index
-        )
+        ).sort_index()
 
-        return (y_pred+full_preds)/2
+        return (y_pred.values+full_preds)/2
